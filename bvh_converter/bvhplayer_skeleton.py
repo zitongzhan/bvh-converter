@@ -65,7 +65,7 @@ class Joint:
         # Transformation matrices:
         self.stransmat = array([[0., 0., 0., 0.], [0., 0., 0., 0.],
                                 [0., 0., 0., 0.], [0., 0., 0., 0.]])
-        
+
         self.rot = {}  # self.rot[t] Rotation values at the frame.
         self.trtr = {}  # self.trtr[time]  A premultiplied series of translation and rotation matrices.
         self.worldpos = {}  # Time-based worldspace xyz position of the joint's endpoint.  A list of vec4's
@@ -74,19 +74,19 @@ class Joint:
         """ Prints information about the joint to stdout.
         """
         print("Joint name:", self.name)
-        print(" %s is connected to " % self.name,)
+        print(" %s is connected to " % self.name, )
         if len(self.children) == 0:
             print("nothing")
         else:
             for child in self.children:
-                print("%s " % child.name,)
+                print("%s " % child.name, )
             print()
         for child in self.children:
             child.info()
 
     def __str__(self):  # Recursively build up text info
         str2 = self.name + " at strans=" + \
-            str(self.strans) + " is connected to "
+               str(self.strans) + " is connected to "
         # Not sure how well self.strans will work now that self.strans is
         # a numpy "array", no longer a cgkit vec3.
         if len(self.children) == 0:
@@ -105,6 +105,7 @@ class Joint:
         self.children.append(childjoint)
         childjoint.hasparent = 1
         childjoint.parent = self
+
 
 # End class joint
 
@@ -197,7 +198,7 @@ class Skeleton:
             for child in cur_node.children:
                 stack.insert(0, child)
         return nodes
-    
+
     def get_frames_worldpos(self, n=None):
         """Returns a list of frames, first item in list will be a header
         :param n: If not None, returns specified frame (with header).
@@ -225,7 +226,7 @@ class Skeleton:
                   for thing in ("X", "Y", "Z")]
         header = ["Time", ] + header
         return header, frame_data
-    
+
     def get_frames_rotations(self, n=None):
         """Returns a list of frames, first item in list will be a header
         :param n: If not None, returns specified frame (with header).
@@ -273,12 +274,12 @@ class Skeleton:
         joints = self.joint_dfs(self.root)
 
         frame_data = dict()
-        
+
         t = f * self.dt
         for j in joints:
             frame_data[j.name] = j.rot[t] if t in j.rot else None, j.worldpos[t][:3]
         return frame_data
-    
+
     def get_offsets(self):
         """
         Get the offsets for each joint in the skeleton.
@@ -290,7 +291,7 @@ class Skeleton:
         for j in joints:
             offsets[j.name] = j.strans
         return offsets
-    
+
     def as_dict(self):
         """
         Get the skeleton topology as dictionary.
@@ -307,19 +308,19 @@ class Skeleton:
                 type = 'joint'
             if j.name[-3:] == "End":
                 type = 'end'
-            
+
             if j.rot:
                 rot_0 = tuple(j.rot[0])
             else:
                 rot_0 = None
-                
+
             joints_dict[j.name] = (j.parent.name if j.hasparent else None,
                                    tuple(j.strans),
                                    rot_0,
                                    type,
                                    [child.name for child in j.children])
         return joints_dict
-        
+
 
 #######################################
 # READBVH class
@@ -372,7 +373,7 @@ def process_bvhnode(node, parentname='hips'):
     name = node.name
     if (name == "End Site") or (name == "end site"):
         name = parentname + "End"
-    
+
     b1 = Joint(name)
     b1.channels = node.channels
     b1.strans[0] = node.offset[0]
@@ -410,8 +411,7 @@ def process_bvhnode(node, parentname='hips'):
 #
 # 9/1/08: rewritten to process only one keyframe
 
-def process_bvhkeyframe(keyframe, joint, t, DEBUG=0):
-
+def process_bvhkeyframe(keyframe, joint, t, DEBUG=0, ignore_hip_rot=True):
     counter = 0
     dotrans = 0
 
@@ -433,6 +433,8 @@ def process_bvhkeyframe(keyframe, joint, t, DEBUG=0):
     has_zrot = False
     for channel in joint.channels:
         keyval = keyframe[counter]
+        if joint.name == 'Hips' and ignore_hip_rot:
+            keyval = 0
         if channel == "Xposition":
             dotrans = 1
             xpos = keyval
@@ -486,12 +488,12 @@ def process_bvhkeyframe(keyframe, joint, t, DEBUG=0):
         else:
             print("Fatal error in process_bvhkeyframe: illegal channel"
                   " name ", channel)
-            return(0)
+            return (0)
         counter += 1
     # End "for channel..."
     if has_xrot or has_yrot or has_zrot:  # End sites don't have rotations.
         joint.rot[t] = (xrot, yrot, zrot)
-    
+
     if dotrans:  # If we are the hips...
         # Build a translation matrix for this keyframe
         dtransmat = array([[1., 0., 0., 0.], [0., 1., 0., 0.],
@@ -585,7 +587,6 @@ def process_bvhkeyframe(keyframe, joint, t, DEBUG=0):
 # PROCESS_BVHFILE function
 
 def process_bvhfile(filename, DEBUG=0):
-
     # 9/11/08: the caller of this routine should cover possible exceptions.
     # Here are two possible errors:
     #  IOError: [Errno 2] No such file or directory: 'fizzball'
@@ -600,7 +601,7 @@ def process_bvhfile(filename, DEBUG=0):
     #
     # my_bvh.read() returns None on success and throws an exception on failure.
 
-    print("Reading BVH file...",)
+    print("Reading BVH file...", )
     my_bvh = ReadBVH(filename)  # Doesn't actually read the file, just creates
     # a readbvh object and sets up the file for
     # reading in the next line.
@@ -609,7 +610,7 @@ def process_bvhfile(filename, DEBUG=0):
     hips = process_bvhnode(my_bvh.root)  # Create joint hierarchy
     print("done")
 
-    print("Building skeleton...",)
+    print("Building skeleton...", )
     myskeleton = Skeleton(hips, keyframes=my_bvh.keyframes, frames=my_bvh.frames, dt=my_bvh.dt)
     print("done")
     if DEBUG:
